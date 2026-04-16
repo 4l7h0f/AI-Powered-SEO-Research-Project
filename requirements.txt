@@ -1,0 +1,9 @@
+requests
+python-dotenv
+slugify
+customtkinter
+pillow
+ddgs
+youtube-transcript-api
+google-genai
+beautifulsoup4
