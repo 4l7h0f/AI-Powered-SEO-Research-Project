@@ -14,7 +14,7 @@ def translate_if_not_english(text):
                  f"Do not include any preambles or explanations. "
                  f"Text: {text[:5000]}") # Limiting to 5000 chars for safety/speed
         
-        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         translated = response.text.strip()
         return translated if translated else text
     except:
@@ -59,6 +59,65 @@ def format_transcript(text):
         chunk = " ".join(sentences[i:i+4])
         paragraphs.append(chunk)
     return "\n\n".join(paragraphs)
+
+def extract_expert_insights(text, source_url):
+    """Extracts core insights, SEO implications, SOP rules, and citations using Gemini."""
+    if not text or not GEMINI_API_KEY:
+        return {
+            "core_insight": "No content to analyze.",
+            "seo_implication": "N/A",
+            "sop_rule": "N/A",
+            "citation": source_url
+        }
+    
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = (
+            f"Analyze the following expert SEO content and extract these four specific sections:\n"
+            f"1. Core insight: The main takeaway or discovery.\n"
+            f"2. Implication for SEO: How this impacts SEO strategy or results.\n"
+            f"3. Actionable rule (SOP line): A clear, step-by-step instruction for an Standard Operating Procedure.\n"
+            f"4. Citation: A brief reference to the source (e.g., 'Author Name via LinkedIn').\n\n"
+            f"Return the response in this EXACT format:\n"
+            f"CORE INSIGHT: [insight]\n"
+            f"SEO IMPLICATION: [implication]\n"
+            f"SOP RULE: [rule]\n"
+            f"CITATION: [citation]\n\n"
+            f"Content: {text[:8000]}" # Limit context for speed/cost
+        )
+        
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        raw_text = response.text.strip()
+        
+        # Parse the response
+        insights = {
+            "core_insight": "N/A",
+            "seo_implication": "N/A",
+            "sop_rule": "N/A",
+            "citation": source_url
+        }
+        
+        patterns = {
+            "core_insight": r"CORE INSIGHT:\s*(.*?)(?=SEO IMPLICATION:|SOP RULE:|CITATION:|$)",
+            "seo_implication": r"SEO IMPLICATION:\s*(.*?)(?=CORE INSIGHT:|SOP RULE:|CITATION:|$)",
+            "sop_rule": r"SOP RULE:\s*(.*?)(?=CORE INSIGHT:|SEO IMPLICATION:|CITATION:|$)",
+            "citation": r"CITATION:\s*(.*?)(?=CORE INSIGHT:|SEO IMPLICATION:|SOP RULE:|$)"
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, raw_text, re.IGNORECASE | re.DOTALL)
+            if match:
+                insights[key] = match.group(1).strip()
+                
+        return insights
+    except Exception as e:
+        print(f"Insight extraction error: {e}")
+        return {
+            "core_insight": "Error processing content.",
+            "seo_implication": "N/A",
+            "sop_rule": "N/A",
+            "citation": source_url
+        }
 
 def save_markdown(author, title, content, subfolder):
     """Saves content into structured markdown files."""

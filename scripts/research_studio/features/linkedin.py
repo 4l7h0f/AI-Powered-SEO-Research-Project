@@ -5,7 +5,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from ddgs import DDGS
 from slugify import slugify
-from scripts.research_studio.utils import get_experts_from_sources, save_markdown, clean_text, translate_if_not_english
+from scripts.research_studio.utils import get_experts_from_sources, save_markdown, clean_text, translate_if_not_english, extract_expert_insights
 
 class LinkedInFrame(ctk.CTkFrame):
     def __init__(self, master, app, **kwargs):
@@ -203,7 +203,20 @@ class LinkedInFrame(ctk.CTkFrame):
 
                 translated_text = translate_if_not_english(full_content)
                 cleaned_content = clean_text(translated_text)
-                final_output = f"**Source URL:** {url}\n\n**Full Content:**\n\n{cleaned_content}"
+                
+                # Extract structured insights
+                insights = extract_expert_insights(cleaned_content, url)
+                
+                final_output = (
+                    f"**Source URL:** {url}\n\n"
+                    f"### Core Insight\n{insights['core_insight']}\n\n"
+                    f"### Implication for SEO\n{insights['seo_implication']}\n\n"
+                    f"### Actionable Rule (SOP Line)\n{insights['sop_rule']}\n\n"
+                    f"### Citation\n{insights['citation']}\n\n"
+                    f"---\n\n"
+                    f"**Full Content:**\n\n{cleaned_content}"
+                )
+                
                 save_markdown(author, title, final_output, "linkedin-posts")
                 count += 1
             self.app.after(0, lambda: messagebox.showinfo("Success", f"Saved {count} posts authored by {author} on AI-SEO topic."))
